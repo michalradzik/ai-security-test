@@ -16,6 +16,5 @@ public class VulnerableController {
     @DeleteMapping("/admin/users/{id}")
     public void deleteUser(@PathVariable Long id) {
         // Brak @PreAuthorize!
-
     }
 }
