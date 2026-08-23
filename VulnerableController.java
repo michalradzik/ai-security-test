@@ -10,7 +10,6 @@ public class VulnerableController {
         String sql = "SELECT * FROM users WHERE id = " + id;
         return sql;
     }
-
     // LUKA 2: Hardkodowany sekret
     private static final String API_KEY = "sk-1234567890abcdef";
 
