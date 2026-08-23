@@ -4,6 +4,7 @@ import org.springframework.web.bind.annotation.*;
 public class VulnerableController {
 
 
+
     // LUKA 1: SQL Injection
     @GetMapping("/user")
     public String getUser(@RequestParam String id) {
