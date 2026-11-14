@@ -6,6 +6,7 @@ public class VulnerableController {
 
     // LUKA 1: SQL Injection
 
+
     @GetMapping("/user")
     public String getUser(@RequestParam String id) {
         String sql = "SELECT * FROM users WHERE id = " + id;
