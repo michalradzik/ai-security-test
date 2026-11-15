@@ -7,6 +7,7 @@ public class VulnerableController {
 
 
 
+
     @GetMapping("/user")
     public String getUser(@RequestParam String id) {
         String sql = "SELECT * FROM users WHERE id = " + id;
