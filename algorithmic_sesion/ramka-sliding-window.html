@@ -1,0 +1,363 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ramka krok po kroku</title>
+<style>
+:root{
+  --bg:#faf9f5;--card:#ffffff;--soft:#f1efe8;--text:#1f1e1d;--muted:#6b6a65;--faint:#a3a19a;
+  --line:#e3e1da;--strong:#c9c6bd;
+  --win-bg:#eaf3de;--win-bd:#3b6d11;--win-tx:#27500a;
+  --acc:#185fa5;--acc-bg:#e6f1fb;
+  --warn-bg:#faeeda;--warn-tx:#854f0b;
+  --code-hl:#fff4d6;
+  --term-bg:#1f1e1d;--term-tx:#e8e6dd;--term-mut:#8c8a83;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#1f1e1d;--card:#2a2927;--soft:#33322f;--text:#f1efe8;--muted:#b4b2a9;--faint:#7c7a74;
+    --line:#3d3c39;--strong:#55534f;
+    --win-bg:#27500a;--win-bd:#97c459;--win-tx:#eaf3de;
+    --acc:#85b7eb;--acc-bg:#0c447c;
+    --warn-bg:#633806;--warn-tx:#fac775;
+    --code-hl:#4a3a12;
+    --term-bg:#141413;--term-tx:#e8e6dd;--term-mut:#7c7a74;
+  }
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;line-height:1.5}
+main{max-width:980px;margin:0 auto;padding:24px 16px 48px}
+h1{font-size:22px;font-weight:600;margin:0 0 4px}
+h2{font-size:17px;font-weight:600;margin:0 0 4px}
+.sub{color:var(--muted);margin:0 0 20px;font-size:15px}
+.mono{font-family:ui-monospace,"JetBrains Mono",Consolas,monospace}
+.controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:16px}
+input{height:38px;padding:0 12px;border:1px solid var(--strong);border-radius:8px;background:var(--card);color:var(--text);font-size:16px;width:180px}
+button{height:38px;padding:0 14px;border:1px solid var(--strong);border-radius:8px;background:var(--card);color:var(--text);font-size:15px;cursor:pointer}
+button:hover{background:var(--soft)}
+button.primary{background:var(--acc);border-color:var(--acc);color:#fff}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) button.primary{color:#042c53}}
+.stepno{color:var(--muted);font-size:14px;margin-left:4px}
+.err{color:#c0392b;font-size:14px;margin:-8px 0 12px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px}
+.strwrap{overflow-x:auto;padding:4px 24px 2px}
+.str{position:relative;height:142px}
+.cell{position:absolute;top:50px;width:52px;text-align:center}
+.box{height:52px;border:1px solid var(--strong);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:22px;background:var(--card);transition:background .25s,color .25s,border-color .25s}
+.box.in{background:var(--win-bg);color:var(--win-tx);border-color:transparent}
+.box.cur{box-shadow:0 0 0 3px var(--acc)}
+.idx{font-size:12px;color:var(--faint);margin-top:4px}
+.ptr{position:absolute;top:0;transform:translateX(-50%);white-space:nowrap;font-size:12px;font-weight:600;color:var(--acc)}
+.frame{position:absolute;top:44px;height:64px;border:3px solid var(--win-bd);border-radius:12px;pointer-events:none;transition:left .35s ease,width .35s ease,opacity .25s}
+.frame-label{position:absolute;top:-21px;left:2px;font-size:12px;font-weight:600;color:var(--win-bd);white-space:nowrap}
+.best{position:absolute;top:134px;height:4px;border-radius:2px;background:var(--warn-tx);opacity:.7;transition:left .35s,width .35s}
+.msg{margin:16px 0;padding:12px 14px;border-left:4px solid var(--acc);background:var(--acc-bg);font-size:16px;min-height:52px}
+.grid{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:16px}
+@media (max-width:760px){.grid{grid-template-columns:minmax(0,1fr)}}
+.code{font-size:13.5px;overflow-x:auto;padding:8px 0}
+.cl{white-space:pre;padding:2px 12px;border-left:3px solid transparent;color:var(--muted)}
+.cl.hl{background:var(--code-hl);border-left-color:var(--warn-tx);color:var(--text);font-weight:600}
+.ln{display:inline-block;width:22px;color:var(--faint);user-select:none}
+.side{display:flex;flex-direction:column;gap:16px}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.stat{background:var(--soft);border-radius:8px;padding:8px 12px}
+.stat .k{font-size:12px;color:var(--muted)}
+.stat .v{font-size:22px;font-weight:600}
+.stat.rec .v{color:var(--warn-tx)}
+.mtitle{font-size:13px;color:var(--muted);margin-bottom:6px}
+.mrow{display:flex;justify-content:space-between;padding:6px 12px;border-bottom:1px solid var(--line);font-size:15px;transition:background .3s}
+.mrow:last-child{border-bottom:none}
+.mrow.stale{color:var(--faint);text-decoration:line-through}
+.mrow.fresh{background:var(--win-bg);color:var(--win-tx)}
+.mbox{border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:13px;color:var(--muted);margin-top:10px}
+.sw{display:inline-block;width:14px;height:14px;border-radius:4px;vertical-align:-2px;margin-right:6px}
+.hm{margin-top:16px}
+.term{background:var(--term-bg);color:var(--term-tx);border-radius:8px;padding:10px 14px;font-size:14px;margin:10px 0;overflow-x:auto;white-space:pre}
+.term .p{color:var(--term-mut)}
+.ops{display:flex;flex-direction:column;gap:6px;margin:10px 0 14px}
+.op{font-size:14px;padding:8px 12px;border-radius:8px;background:var(--soft)}
+.op .ret{font-weight:700}
+.op .ret.t{color:var(--win-bd)}
+.op .ret.f{color:#c0392b}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .op .ret.f{color:#f09595}}
+.op.none{color:var(--faint)}
+.buckets{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:6px}
+@media (max-width:600px){.buckets{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.bk{border:1px solid var(--line);border-radius:8px;min-height:62px;padding:4px 6px;font-size:13px;transition:background .3s,border-color .3s}
+.bk .bi{font-size:11px;color:var(--faint)}
+.bk.hit{border:2px solid var(--acc);background:var(--acc-bg)}
+.node{display:inline-block;margin-top:3px;padding:2px 6px;border-radius:6px;background:var(--soft);white-space:nowrap}
+.node.stale{color:var(--faint);text-decoration:line-through}
+.node.fresh{background:var(--win-bg);color:var(--win-tx)}
+.arrow{color:var(--faint);font-size:12px;margin:0 2px}
+.note{font-size:13px;color:var(--muted);margin-top:10px}
+.ascii{font-size:16px;line-height:1.55;white-space:pre;overflow-x:auto;margin:0;color:var(--text)}
+.ascii .a{color:var(--acc);font-weight:700}
+.ascii .w{color:var(--win-bd);font-weight:700}
+.ascii .m{color:var(--muted)}
+</style>
+</head>
+<body>
+<main>
+<h1>Ramka krok po kroku</h1>
+<p class="sub">Najdłuższy fragment bez powtórzeń: okno przesuwne z mapą <span class="mono">lastIndex</span>. Strzałki na klawiaturze też działają.</p>
+
+<div class="controls">
+  <input id="inp" class="mono" value="abba" maxlength="14" aria-label="String do przeanalizowania">
+  <button id="load">Wczytaj</button>
+  <button id="prev">← Wstecz</button>
+  <button id="next" class="primary">Dalej →</button>
+  <button id="play">Auto</button>
+  <button id="reset">Od początku</button>
+  <span id="stepno" class="stepno"></span>
+</div>
+<div id="err" class="err"></div>
+
+<div class="card">
+  <div class="strwrap"><div id="str" class="str"></div></div>
+  <div class="legend">
+    <span><span class="sw" style="border:3px solid var(--win-bd)"></span>ramka [left..right], bez powtórzeń</span>
+    <span><span class="sw" style="box-shadow:0 0 0 3px var(--acc) inset"></span>znak, który teraz oglądam</span>
+    <span><span class="sw" style="background:var(--warn-tx);height:4px;vertical-align:3px"></span>najlepsza ramka do tej pory (max)</span>
+  </div>
+</div>
+
+<div id="msg" class="msg"></div>
+
+<div class="card" style="margin-bottom:16px">
+  <div class="mtitle">Ten sam krok w wersji „z zeszytu”:</div>
+  <pre class="ascii mono" id="ascii"></pre>
+</div>
+
+<div class="grid">
+  <div class="card code mono" id="code"></div>
+  <div class="side">
+    <div class="stats">
+      <div class="stat"><div class="k">left</div><div class="v mono" id="sl"></div></div>
+      <div class="stat"><div class="k">right</div><div class="v mono" id="sr"></div></div>
+      <div class="stat"><div class="k">c</div><div class="v mono" id="sc"></div></div>
+      <div class="stat"><div class="k">długość ramki</div><div class="v mono" id="sw"></div></div>
+      <div class="stat rec" style="grid-column:1/-1"><div class="k">max (rekord)</div><div class="v mono" id="sm"></div></div>
+    </div>
+    <div>
+      <div class="mtitle">Zeszyt <span class="mono">lastIndex</span>: znak → ostatnia pozycja</div>
+      <div class="mbox mono" id="map"></div>
+      <div class="legend" style="margin-top:6px">Przekreślone = wpis sprzed ramki (pozycja &lt; left), nie liczy się</div>
+    </div>
+  </div>
+</div>
+
+<div class="card hm">
+  <h2>Zawartość HashMapy <span class="mono" style="font-weight:400">lastIndex</span></h2>
+  <div class="mtitle">Co by wypisał <span class="mono">System.out.println(lastIndex)</span> w tym kroku:</div>
+  <div class="term mono" id="println"></div>
+  <div class="mtitle">Wywołania na mapie w tym kroku i co zwróciły:</div>
+  <div class="ops mono" id="ops"></div>
+  <div class="mtitle">W środku: tablica kubełków (<span id="capinfo"></span>)</div>
+  <div class="buckets mono" id="buckets"></div>
+  <div class="note" id="hashnote"></div>
+</div>
+</main>
+
+<script>
+const CODE=[
+"Map<Character, Integer> lastIndex = new HashMap<>();",
+"int left = 0;",
+"int max = 0;",
+"",
+"for (int right = 0; right < s.length(); right++) {",
+"    char c = s.charAt(right);",
+"    if (lastIndex.containsKey(c) && lastIndex.get(c) >= left) {",
+"        left = lastIndex.get(c) + 1;",
+"    }",
+"    lastIndex.put(c, right);",
+"    max = Math.max(max, right - left + 1);",
+"}",
+"return max;"
+];
+const CW=52,GAP=10,STEP=CW+GAP;
+let S="",steps=[],k=0,timer=null;
+
+function esc(t){return String(t).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+function q(c){return "'"+c+"'";}
+function capFor(size){let cap=16;while(size>cap*0.75)cap*=2;return cap;}
+function bucketOf(c,cap){const h=c.charCodeAt(0);return (h^(h>>>16))&(cap-1);}
+
+function build(s){
+  S=s;steps=[];
+  const map=new Map();let left=0,max=0,bestL=0,bestR=-1;
+  const snap=()=>Array.from(map.entries());
+  const push=(o)=>steps.push(Object.assign({entries:snap(),left,max,bestL,bestR,fresh:null,ops:[],hit:null},o));
+  push({lines:[0,1,2],right:-1,cur:-1,wl:0,wr:-1,c:"",
+    ops:[{t:"new HashMap<>()",r:"pusta mapa, 16 kubełków"}],
+    msg:"Start. Zeszyt pusty, ramka pusta (left = 0), rekord max = 0."});
+  for(let r=0;r<s.length;r++){
+    const c=s[r];
+    push({lines:[4,5],right:r,cur:r,wl:left,wr:r-1,c,
+      msg:"right = "+r+". Oglądam znak '"+c+"'. Ramka jeszcze go nie obejmuje, najpierw sprawdzam, czy mogę go do niej dołożyć."});
+    const has=map.has(c), inWin=has&&map.get(c)>=left;
+    let m, ops=[{t:"lastIndex.containsKey("+q(c)+")",r:has?"true":"false",b:has}];
+    if(!has) m="Czy '"+c+"' jest w zeszycie? Nie ma. Warunek = false, left zostaje na "+left+".";
+    else{
+      ops.push({t:"lastIndex.get("+q(c)+")",r:String(map.get(c))});
+      ops.push({t:map.get(c)+" >= left ("+left+")",r:inWin?"true":"false",b:inWin});
+      if(inWin) m="Czy '"+c+"' jest w zeszycie? Tak, na pozycji "+map.get(c)+". Czy "+map.get(c)+" ≥ left ("+left+")? Tak, więc ten znak JEST w ramce. Powtórzenie! Warunek = true.";
+      else m="Czy '"+c+"' jest w zeszycie? Tak, na pozycji "+map.get(c)+". Czy "+map.get(c)+" ≥ left ("+left+")? Nie, to stary wpis sprzed ramki. Ignoruję go, warunek = false.";
+    }
+    if(!has) ops.push({t:"lastIndex.get("+q(c)+")",r:"nie wywołane (&& skraca, bo lewa strona false)",skip:true});
+    push({lines:[6],right:r,cur:r,wl:left,wr:r-1,c,msg:m,ops,hit:c});
+    if(inWin){
+      const old=map.get(c);left=old+1;
+      push({lines:[7],right:r,cur:r,wl:left,wr:r-1,c,hit:c,
+        ops:[{t:"lastIndex.get("+q(c)+")",r:String(old)},{t:"left = "+old+" + 1",r:String(left)}],
+        msg:"Przesuwam lewy brzeg ramki tuż za poprzednie '"+c+"': left = "+old+" + 1 = "+left+". Stare '"+c+"' wypada z ramki."});
+    }
+    const prevVal=map.has(c)?String(map.get(c)):"null";
+    map.set(c,r);
+    push({lines:[9],right:r,cur:r,wl:left,wr:r,c,fresh:c,hit:c,
+      ops:[{t:"lastIndex.put("+q(c)+", "+r+")",r:prevVal+(prevVal==="null"?"  (nowy klucz, wpis dodany)":"  (stara wartość, nadpisana na "+r+")")}],
+      msg:"Zapisuję w zeszycie: '"+c+"' → "+r+". "+(prevVal==="null"?"To nowy klucz, mapa rośnie o jeden wpis.":"Klucz już był, więc put tylko nadpisuje wartość "+prevVal+" na "+r+". Liczba wpisów się nie zmienia.")+" Ramka obejmuje teraz pozycje "+left+".."+r+"."});
+    const w=r-left+1;let mm;
+    if(w>max){max=w;bestL=left;bestR=r;mm="Długość ramki = right − left + 1 = "+r+" − "+left+" + 1 = "+w+". To więcej niż rekord, więc max = "+max+".";}
+    else mm="Długość ramki = "+r+" − "+left+" + 1 = "+w+". Rekord to "+max+", więc max się nie zmienia.";
+    push({lines:[10],right:r,cur:r,wl:left,wr:r,c,msg:mm});
+  }
+  push({lines:[12],right:s.length-1,cur:-1,wl:left,wr:s.length-1,c:"",
+    msg:s.length?"Koniec stringa. Zwracam max = "+max+". Najlepsza ramka to \""+s.slice(bestL,bestR+1)+"\" (pomarańczowa kreska).":"Pusty string, pętla się nie wykonuje. Zwracam 0."});
+  k=0;render();
+}
+
+function renderHashMap(st){
+  const cap=capFor(st.entries.length);
+  const buckets=Array.from({length:cap},()=>[]);
+  for(const [c,v] of st.entries)buckets[bucketOf(c,cap)].push([c,v]);
+  const ordered=[];buckets.forEach(b=>b.forEach(e=>ordered.push(e)));
+  document.getElementById("println").innerHTML='<span class="p">&gt; </span>{'+ordered.map(([c,v])=>esc(c)+"="+v).join(", ")+"}"+
+    '\n<span class="p">&gt; size() = '+st.entries.length+'</span>';
+  document.getElementById("ops").innerHTML=st.ops.length?st.ops.map(o=>{
+    if(o.skip)return '<div class="op none">'+esc(o.t)+' → '+esc(o.r)+'</div>';
+    const cls=o.b===true?" t":o.b===false?" f":"";
+    return '<div class="op">'+esc(o.t)+' → <span class="ret'+cls+'">'+esc(o.r)+'</span></div>';
+  }).join(""):'<div class="op none">w tym kroku kod nie dotyka mapy</div>';
+  document.getElementById("capinfo").textContent=cap+" kubełków, "+st.entries.length+" wpisów";
+  let h="";
+  for(let i=0;i<cap;i++){
+    const hit=st.hit!==null&&bucketOf(st.hit,cap)===i;
+    h+='<div class="bk'+(hit?" hit":"")+'"><div class="bi">['+i+']</div>'+
+      buckets[i].map(([c,v],j)=>(j?'<span class="arrow">→</span>':'')+'<span class="node'+(v<st.left?" stale":"")+(c===st.fresh?" fresh":"")+'">'+esc(c)+'='+v+'</span>').join("")+'</div>';
+  }
+  document.getElementById("buckets").innerHTML=h;
+  let note="Każdy klucz trafia do kubełka o numerze hashCode() & ("+cap+" − 1). Dla znaku hashCode to jego kod ASCII";
+  if(st.hit!==null){const code=st.hit.charCodeAt(0);note+=": '"+st.hit+"' = "+code+", "+code+" & "+(cap-1)+" = "+bucketOf(st.hit,cap)+", więc kubełek ["+bucketOf(st.hit,cap)+"] (podświetlony).";}
+  else note+=".";
+  note+=" Dlatego println wypisuje klucze w kolejności kubełków, a nie w kolejności wstawiania. Dwa klucze w jednym kubełku to kolizja, wtedy tworzą listę (→).";
+  document.getElementById("hashnote").textContent=note;
+}
+
+function renderAscii(st){
+  const PRE=9, COL=3, n=S.length;
+  const pos=i=>PRE+i*COL;
+  const width=PRE+Math.max(n,1)*COL+30;
+  const blank=()=>Array(width).fill(" ");
+  const put=(arr,at,txt)=>{for(let j=0;j<txt.length;j++)if(at+j>=0&&at+j<width)arr[at+j]=txt[j];};
+  const line=a=>a.join("").replace(/\s+$/,"");
+  if(!n){document.getElementById("ascii").textContent="(pusty string, nie ma czego rysować)";return;}
+
+  const idx=blank();put(idx,0,"indeks:");for(let i=0;i<n;i++)put(idx,pos(i),String(i));
+  const chr=blank();put(chr,0,"znak:");for(let i=0;i<n;i++)put(chr,pos(i),S[i]);
+
+  const hasR=st.right>=0, L=st.left, R=st.right;
+  const arr=blank();put(arr,pos(Math.min(L,n-1)),"↑");if(hasR)put(arr,pos(R),"↑");
+  const lab1=blank(), lab2=blank();let useLab2=false;
+  if(hasR&&L===R){put(lab1,pos(L)-4,"left=right");}
+  else{
+    const lAt=pos(Math.min(L,n-1))-1;put(lab1,lAt,"left");
+    if(hasR){
+      const rAt=pos(R)-1;
+      if(rAt<=lAt+4){put(lab2,rAt,"right");useLab2=true;}else put(lab1,rAt,"right");
+    }
+  }
+
+  const fr=blank();put(fr,0,"ramka:");
+  let tail;
+  if(st.wr<st.wl){
+    put(fr,PRE,"(pusta)");tail="";
+  }else{
+    put(fr,pos(st.wl)-1,"[");
+    for(let i=st.wl;i<=st.wr;i++)put(fr,pos(i),S[i]);
+    put(fr,pos(st.wr)+1,"]");
+    tail="     długość = "+st.wr+" - "+st.wl+" + 1 = "+(st.wr-st.wl+1);
+  }
+  let extra="";
+  if(hasR&&st.wr<R&&st.cur===R)extra="\n"+" ".repeat(PRE)+"'"+S[R]+"' na pozycji "+R+" jeszcze poza ramką (dopiero sprawdzam)";
+
+  let out=esc(line(idx))+"\n"+esc(line(chr))+"\n"+
+    '<span class="a">'+esc(line(arr))+"\n"+esc(line(lab1))+(useLab2?"\n"+esc(line(lab2)):"")+"</span>\n"+
+    '<span class="w">'+esc(line(fr))+"</span>"+'<span class="m">'+esc(tail)+esc(extra)+"</span>";
+  document.getElementById("ascii").innerHTML=out;
+}
+
+function render(){
+  const st=steps[k];
+  document.getElementById("stepno").textContent="Krok "+k+" / "+(steps.length-1);
+  let h="";
+  for(let i=0;i<S.length;i++){
+    const x=i*STEP, inW=i>=st.wl&&i<=st.wr, p=[];
+    if(i===st.left)p.push("left");
+    if(i===st.cur)p.push("right");
+    if(p.length)h+='<div class="ptr" style="left:'+(x+CW/2)+'px">'+p.join(" = ")+'</div>';
+    h+='<div class="cell" style="left:'+x+'px"><div class="box mono'+(inW?" in":"")+(i===st.cur?" cur":"")+'">'+esc(S[i])+'</div><div class="idx">'+i+'</div></div>';
+  }
+  const empty=st.wr<st.wl;
+  const fw=empty?0:(st.wr-st.wl+1)*STEP-GAP+12;
+  h+='<div class="frame" style="left:'+(empty?st.wl*STEP:st.wl*STEP-6)+'px;width:'+fw+'px;opacity:'+(empty?0:1)+'"><span class="frame-label">ramka</span></div>';
+  if(st.bestR>=0)h+='<div class="best" style="left:'+(st.bestL*STEP)+'px;width:'+((st.bestR-st.bestL+1)*STEP-GAP)+'px"></div>';
+  const str=document.getElementById("str");
+  str.style.width=Math.max(S.length*STEP,200)+"px";
+  str.innerHTML=h;
+  document.getElementById("msg").textContent=st.msg;
+  document.getElementById("code").innerHTML=CODE.map((l,i)=>'<div class="cl'+(st.lines.includes(i)?" hl":"")+'"><span class="ln">'+(i+1)+'</span>'+esc(l)+'</div>').join("");
+  document.getElementById("sl").textContent=st.left;
+  document.getElementById("sr").textContent=st.right>=0?st.right:"–";
+  document.getElementById("sc").textContent=st.c?"'"+st.c+"'":"–";
+  document.getElementById("sw").textContent=empty?0:(st.wr-st.wl+1);
+  document.getElementById("sm").textContent=st.max;
+  document.getElementById("map").innerHTML=st.entries.length?st.entries.map(([c,v])=>
+    '<div class="mrow'+(v<st.left?" stale":"")+(c===st.fresh?" fresh":"")+'"><span>\''+esc(c)+'\'</span><span>'+v+'</span></div>'
+  ).join(""):'<div class="mrow" style="color:var(--faint)">pusto</div>';
+  renderHashMap(st);
+  renderAscii(st);
+}
+
+function stop(){if(timer){clearInterval(timer);timer=null;document.getElementById("play").textContent="Auto";}}
+function next(){if(k<steps.length-1){k++;render();}else stop();}
+function prev(){if(k>0){k--;render();}}
+document.getElementById("next").onclick=()=>{stop();next();};
+document.getElementById("prev").onclick=()=>{stop();prev();};
+document.getElementById("reset").onclick=()=>{stop();k=0;render();};
+document.getElementById("play").onclick=()=>{
+  if(timer){stop();return;}
+  if(k>=steps.length-1){k=0;render();}
+  document.getElementById("play").textContent="Pauza";
+  timer=setInterval(next,1400);
+};
+const inp=document.getElementById("inp"),err=document.getElementById("err");
+inp.addEventListener("input",()=>{err.textContent="";});
+function load(){
+  const v=inp.value;
+  if(v.length>14){err.textContent="Wpisz najwyżej 14 znaków.";return;}
+  stop();build(v);
+}
+document.getElementById("load").onclick=load;
+inp.addEventListener("keydown",e=>{if(e.key==="Enter")load();});
+document.addEventListener("keydown",e=>{
+  if(e.target===inp)return;
+  if(e.key==="ArrowRight"){stop();next();}
+  if(e.key==="ArrowLeft"){stop();prev();}
+});
+build("abba");
+</script>
+</body>
+</html>
