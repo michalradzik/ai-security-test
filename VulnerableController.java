@@ -12,6 +12,7 @@ public class VulnerableController {
         return sql;
     }
 
+
     // LUKA 2: Hardkodowany sekret
     private static final String API_KEY = "sk-1234567890abcdef";
     // LUKA 3: Brak autoryzacji
